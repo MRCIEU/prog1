@@ -1,0 +1,88 @@
+---
+title: "Direct vs confounder instruments"
+author: "Gibran Hemani"
+date: "2022-02-09"
+output: html_notebook
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(simulateGP)
+library(dplyr)
+library(TwoSampleMR)
+```
+
+
+Simulate a model where genotypes influence X and U and U has some influence on X. What are the effects of genotypes on X? What fraction of GWAS hits are direct effects for each percentile of magnitude of G-X assoc?
+
+```{r}
+nd <- 1000
+nc <- 1000
+np <- 100
+
+bxy <- 0.5
+bgx <- abs(rnorm(nd))
+bgu <- abs(rnorm(nc))
+
+bgux <- bgu * bxy
+
+d <- tibble(b = c(bgx, bgux), path=c(rep("direct", nd), rep("confounder", each=nc))) %>%
+	arrange(b) %>%
+	mutate(ord=1:n(), perc = ntile(b, np)) %>%
+	group_by(perc) %>%
+	summarise(b=mean(b), n=n(), prop=sum(path=="direct")/n())
+
+d %>%
+ggplot(., aes(x=perc, y=b)) +
+geom_jitter(aes(colour=prop)) +
+scale_colour_gradient(low="red", high="blue") +
+labs(y="Genetic effect on X", x="Percentile", colour="Probability of GWAS hit being a direct effect") +
+theme(legend.position="bottom")
+```
+
+Figure is used here: https://drive.google.com/file/d/1XW9f0cUUt8jGZWmea11Nb3kN2JsR0sQ5/view?usp=sharing
+
+## Bias from G-U instruments
+
+This is the expected effect estimate of X on Y using an instrument that arises via U:
+
+$$
+\beta_{IV,u} = \frac{\beta_{gu} \beta_{uy} + \beta_{gu} \beta_{ux} \beta_{xy}}{\beta_{gu} \beta_{ux}}
+$$
+which simplifies to
+
+$$
+\beta_{IV,u} = \frac{\beta_{uy}}{\beta_{ux}} + \beta_{xy}
+$$
+Check that this is correct
+
+```{r, message=FALSE}
+nid <- 10000
+gx <- rbinom(nid, 2, 0.3)
+gu <- rbinom(nid, 2, 0.3)
+
+u <- gu + rnorm(nid)
+xl <- gx + rnorm(nid)
+
+param <- expand.grid(
+	bux = seq(-1, 1, by=0.2),
+	buy = seq(-1, 1, by=0.2),
+	bxy = c(0, 0.5)
+)
+
+out <- lapply(1:nrow(param), function(i)
+{
+	x <- xl + u * param$bux[i]
+	y <- x * param$bxy[i] + u * param$buy[i] + rnorm(nid)
+	p <- param[i,]
+	p$bgx <- get_effs(x, y, matrix(gx, nid, 1)) %>% mr() %>% {.$b}
+	p$bgu <- get_effs(x, y, matrix(gu, nid, 1)) %>% mr() %>% {.$b}
+	return(p)
+}) %>% bind_rows()
+
+out$exp_gu <- out$buy / out$bux + out$bxy
+plot(bgu ~ exp_gu, subset(out, !is.infinite(exp_gu)))
+```
+
+
