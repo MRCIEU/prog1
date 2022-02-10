@@ -1,0 +1,84 @@
+---
+title: "Inflammation and depression"
+author: "Gibran Hemani"
+date: "2022-02-10"
+output: html_notebook
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(ieugwasr)
+library(tidyverse)
+library(TwoSampleMR)
+library(rsnps)
+```
+
+
+Depression GWAS:
+
+```{r}
+gwasinfo("ieu-b-102") %>% str()
+```
+
+C-reactive protein GWAS:
+
+```{r}
+gwasinfo("ieu-b-35") %>% str()
+```
+
+Perform MR
+
+```{r}
+dat <- make_dat("ieu-b-35", "ieu-b-102")
+res <- mr(dat)
+mr_scatter_plot(res, dat)
+```
+
+```{r}
+res %>% select(method, nsnp, b, se, pval)
+```
+
+Use only CRP variant
+
+```{r}
+ress <- mr_singlesnp(dat)
+mr_forest_plot(ress)
+```
+
+Find CRP SNP
+
+```{r}
+crp_snp <- subset(dat, chr == 1) %>%
+  mutate(dist=abs(pos.exposure - 159682079)) %>%
+  arrange(dist) %>%
+  select(dist, SNP, pval.exposure) %>%
+  {.$SNP[1]}
+```
+
+Find IL6R SNP
+
+```{r}
+dbsnp_info <- ncbi_snp_query(dat$SNP)
+il6r_snp <- subset(dbsnp_info, gene == "IL6R")$rsid
+```
+MR using just CRP
+
+```{r}
+subset(ress, SNP == crp_snp) %>% str()
+```
+MR using just IL6R
+
+```{r}
+subset(ress, SNP == il6r_snp) %>% str()
+```
+
+Multivariable MR of CRP and BMI on MDD
+
+```{r}
+mvexp <- mv_extract_exposures(c("ieu-b-40", "ieu-b-35"))
+mvout <- extract_outcome_data(mvexp$SNP, "ieu-b-102")
+mvdat <- mv_harmonise_data(mvexp, mvout)
+mvres <- mv_multiple(mvdat) 
+mvres$result %>% select(exposure, nsnp, b, se, pval)
+```
+
+
