@@ -13,6 +13,15 @@ library(rsnps)
 ```
 
 
+## Summary
+
+- Not much support for CRP on causal pathway to MDD, modest protective effect of higher inflammation
+- Either using all variants or just CRP or IL6R variants
+- MVMR of CRP + BMI on MDD shows BMI associates independent of CRP
+- Reverse MR of MDD on CRP is null, modest positive effect of higher MDD liability with higher CRP
+
+## Analysis
+
 Depression GWAS:
 
 ```{r}
@@ -81,4 +90,43 @@ mvres <- mv_multiple(mvdat)
 mvres$result %>% select(exposure, nsnp, b, se, pval)
 ```
 
+Reverse MR
+
+```{r}
+datr <- make_dat("ieu-b-102", "ieu-b-35")
+resr <- mr(datr)
+mr_scatter_plot(resr, datr)
+```
+
+```{r}
+resr %>% select(method, nsnp,b, se, pval)
+```
+
+## Human immune system traits from Roederer et al 2015
+
+
+```{r}
+gi <- gwasinfo()
+hi_exp <- extract_instruments(gi$id[grepl("met-b-", gi$id)])
+str(hi_exp)
+```
+
+```{r}
+hi_out <- extract_outcome_data(hi_exp$SNP, "ieu-b-102")
+hi_dat <- harmonise_data(hi_exp, hi_out)
+hi_res <- mr(hi_dat)
+```
+
+Does anything surpass 5% FDR threshold?
+
+```{r}
+subset(hi_res, method %in% c("Inverse variance weighted", "Wald ratio")) %>% mutate(fdr=p.adjust(pval, "fdr")) %>%
+  arrange(fdr) %>%
+  filter(fdr < 0.05) %>%
+  select(exposure, nsnp, b, se, pval)
+```
+
+```{r}
+
+```
 
