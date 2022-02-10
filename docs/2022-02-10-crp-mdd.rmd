@@ -127,6 +127,6 @@ subset(hi_res, method %in% c("Inverse variance weighted", "Wald ratio")) %>% mut
 ```
 
 ```{r}
-
+hi_res[which.min(hi_res$pval), ] %>% str()
 ```
 
