@@ -2,8 +2,12 @@
 title: "Variance estimators"
 author: "Gibran Hemani"
 date: "`r Sys.Date()`"
-format: html
+format:  
+  html:
+    embed-resources: true
 editor: visual
+execute:
+  cache: true
 ---
 
 ## Power of MZs for variance
