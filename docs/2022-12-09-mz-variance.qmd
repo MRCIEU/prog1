@@ -18,6 +18,23 @@ library(ggplot2)
 ```
 
 ```{r}
+sim_pop <- function(n, beta1, beta2, af, h2)
+{
+  g <- rbinom(n, 2, af)
+  prs <- g * beta1
+  vg <- rnorm(n, 0, h2)
+  v <- rnorm(n, 0, beta2 * g)
+  ve <- rnorm(n, 0, sqrt(1 - var(vg) - var(v) - var(prs)))
+  y <- prs + v + vg + ve
+  return(tibble(
+    g, y
+  ))
+}
+a <- sim_pop(100000, 0.1, 0.5, 0.3, 0.1)
+var(a)
+```
+
+```{r}
 sim_mz <- function(n, beta1, beta2, af, h2)
 {
   g <- rbinom(n, 2, af)
@@ -208,3 +225,159 @@ res3 %>%
 ```
 
 Under normal distribution type-1 error rate is well controlled.
+
+## Sibs
+
+Generate a set of sib pairs with the following specification
+
+-   Have PRS such that IBD \~ N(0.5, sqrt(0.037))
+
+-   h2 specified
+
+-   ce specified (shared variance between sibs
+
+-   one SNP has a mean and variance effect
+
+-   scaled phenotypes \~ N(0, 1)
+
+```{r}
+sim_sibs <- function(af, nfam, beta1, beta2, h2, c2)
+{
+  # Choose number of SNPs to be expected number of recombination events
+  # in order to give appropriate distribution of IBD
+	nsnp <- 87
+	af <- rep(af, nsnp)
+	dads <- matrix(0, nfam, nsnp)
+	mums <- matrix(0, nfam, nsnp)
+	sibs1 <- matrix(0, nfam, nsnp)
+	sibs2 <- matrix(0, nfam, nsnp)
+	ibd <- matrix(0, nfam, nsnp)
+	ibs <- matrix(0, nfam, nsnp)
+	for(i in 1:nsnp)
+	{
+		dad1 <- rbinom(nfam, 1, af[i]) + 1
+		dad2 <- (rbinom(nfam, 1, af[i]) + 1) * -1
+		mum1 <- rbinom(nfam, 1, af[i]) + 1
+		mum2 <- (rbinom(nfam, 1, af[i]) + 1) * -1
+
+		dadindex <- sample(c(TRUE, FALSE), nfam, replace=TRUE)
+		dadh <- rep(NA, nfam)
+		dadh[dadindex] <- dad1[dadindex]
+		dadh[!dadindex] <- dad2[!dadindex]
+
+		mumindex <- sample(c(TRUE, FALSE), nfam, replace=TRUE)
+		mumh <- rep(NA, nfam)
+		mumh[mumindex] <- mum1[mumindex]
+		mumh[!mumindex] <- mum2[!mumindex]
+
+		sib1 <- cbind(dadh, mumh)
+
+		dadindex <- sample(c(TRUE, FALSE), nfam, replace=TRUE)
+		dadh <- rep(NA, nfam)
+		dadh[dadindex] <- dad1[dadindex]
+		dadh[!dadindex] <- dad2[!dadindex]
+
+		mumindex <- sample(c(TRUE, FALSE), nfam, replace=TRUE)
+		mumh <- rep(NA, nfam)
+		mumh[mumindex] <- mum1[mumindex]
+		mumh[!mumindex] <- mum2[!mumindex]
+
+		sib2 <- cbind(dadh, mumh)
+
+		ibd[,i] <- (as.numeric(sib1[,1] == sib2[,1]) + as.numeric(sib1[,2] == sib2[,2])) / 2
+
+		sibs1[,i] <- rowSums(abs(sib1) - 1)
+		sibs2[,i] <- rowSums(abs(sib2) - 1)
+		dads[,i] <- dad1 - 1 + abs(dad2) - 1
+		mums[,i] <- mum1 - 1 + abs(mum2) - 1
+
+		# l[[i]] <- (sum(sib1[,1] == sib2[,1]) / nsnp + sum(sib1[,2] == sib2[,2]) / nsnp) / 2
+
+	}
+	n <- nfam
+	# Make phenotypes
+	ce <- rnorm(n, 0, sqrt(c2))
+	v1 <- rnorm(n, 0, beta2 * sibs1[,1])
+	v2 <- rnorm(n, 0, beta2 * sibs2[,1])
+	e1 <- rnorm(n, 0, sqrt(1 - h2 - c2 - var(v1)))
+	e2 <- rnorm(n, 0, sqrt(1 - h2 - c2 - var(v2)))
+	b <- rnorm(nsnp-1, 0, 1)
+	h2_1 <- beta1^2 * af[1] * (1-af[1]) * 2
+	h2_res <- h2 - h2_1
+	prs1 <- scale(sibs1[,-1] %*% b) * sqrt(h2_res)
+	prs2 <- scale(sibs2[,-1] %*% b) * sqrt(h2_res)
+	y1 <- sibs1[,1] * beta1 + prs1 + v1 + ce + e1
+	y2 <- sibs2[,1] * beta1 + prs2 + v2 + ce + e2
+	return(tibble(
+	  ibd = rowMeans(ibd),
+	  g1 = sibs1[,1],
+	  g2 = sibs2[,1],
+	  prs1,
+	  prs2,
+	  y1, 
+	  y2
+	))
+}
+```
+
+Notes
+
+-   In this model if the allele frequency is higher, then the genotype class with the larger variance is more common, which means that effect alleles are not reflexive in terms of variances
+
+-   I think this use with siblings may have problems due to LD. If there is incomplete LD with another causal variant elsewhere close by then the mean effect of that causal variant will contribute to the variance effect estimated at the variant
+
+```{r}
+fam <- sim_sibs(0.3, 10000, 0.1, 0.4, 0.6, 0.1)
+cor(fam) %>% round(4)
+```
+
+Now how to estimate variance effect? At a locus restrict to sib pairs who are IBD = 1
+
+```{r}
+fam <- sim_sibs(af=0.5, nfam=40000, beta1=0.1, beta2=0.2, h2=0.3, c2=0.1)
+fam
+```
+
+Test for variance QTL
+
+```{r}
+fam <- sim_sibs(af=0.5, nfam=40000, beta1=0.1, beta2=0.2, h2=0.01, c2=0.01)
+f1 <- subset(fam, g1==g2)
+test_mz(f1$g1, f1$y1, f1$y2)
+```
+
+Power sims
+
+```{r}
+param <- expand.grid(
+  beta1 = 0,
+  beta2 = seq(0, 0.5, by=0.01),
+  c2 = c(0),
+  h2 = c(0.1, 0.5),
+  af = c(0.5)
+)
+dim(param)
+
+res4 <- lapply(1:nrow(param), function(i)
+  {
+  a1 <- do.call(sim_sibs, param[i,] %>% mutate(nfam=22000))
+  a2 <- do.call(sim_pop, param[i,] %>% select(-c(c2)) %>% mutate(n=500000))
+  if(any(is.na(a1$y1)) | any(is.na(a1$y2)) | any(is.na(a2$y)))
+  {
+    return(NULL)
+  }
+  bind_rows(
+    a1 %>% filter(g1==g2) %>% select(g=g1, y1, y2) %>% do.call(test_mz, .),
+    do.call(test_drm, a2)
+  ) %>%
+    bind_cols(., param[i,])
+}) %>%
+  bind_rows()
+```
+
+```{r}
+res4 %>% mutate(sharing=c2+h2) %>% filter(beta1==0) %>%
+  ggplot(., aes(x=beta2, y=-log10(`Pr(>|t|)`))) +
+  geom_line(aes(colour=method, groups=af)) +
+  facet_grid(. ~ sharing)
+```
