@@ -1,0 +1,42 @@
+---
+title: "IEU P1 QQ3 gantt chart"
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+library(lubridate)
+library(dplyr)
+```
+
+
+```{r}
+dat <- readxl::read_xlsx("~/University\ of\ Bristol/grp-IEU\ Programme\ Leads\ -\ Documents/QQR/Work\ in\ progress/Programme\ 1/gantt\ -\ IEU\ 3.0\ P1.xlsx") %>%
+  select(-c("Assigned To"))
+dat
+```
+
+How many FTEs per year
+
+```{r}
+dat$`Start Date` <- ymd(dat$`Start Date`)
+dat$`End Date` <- ymd(dat$`End Date`)
+
+spend <- sapply(c(
+  interval(ymd("2023-04-01"), ymd("2024-03-31")),
+  interval(ymd("2024-04-01"), ymd("2025-03-31")),
+  interval(ymd("2025-04-01"), ymd("2026-03-31")),
+  interval(ymd("2026-04-01"), ymd("2027-03-31")),
+  interval(ymd("2027-04-01"), ymd("2028-03-31"))
+), function(i)
+  {
+  {intersect(interval(dat$`Start Date`, dat$`End Date`), i) %>% as.duration() %>% sum(na.rm=T) %>% seconds_to_period() %>% day()}
+})
+
+sum(spend) / 365
+spend / 365
+```
+
+
+
+
