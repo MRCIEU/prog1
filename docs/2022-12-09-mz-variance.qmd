@@ -10,12 +10,50 @@ execute:
   cache: true
 ---
 
-## Power of MZs for variance
+## Data generating model
+
+$$
+y_i = \alpha + \beta_{1,j}G_{ij} + z_i + v_i + e_i
+$$
+
+where $\alpha$ is an intercept term, $\beta_{1,j}$ is the additive effect of SNP \$j\$, $G_{i,j}$ is the genotype value for individual $i$ at SNP \$j\$, $z_i$ is the remaining polygenic risk
+
+$$
+z_i \sim N(0, \sigma^2_{g} - 2p_j(1-p_j)\beta_{1,j}^2)
+$$
+
+$v_i$ is the SNP's influence on dispersion where
+
+$$
+v_i \sim N(0, \beta_{2,j}G_{i,j})
+$$
+
+and $e_i$ is the residual variance
+
+$$
+e_i \sim N(0, 1 - \sigma^2_g - \sigma^2_v)
+$$
+
+To estimate dispersion effects amongst unrelateds use the deviation regression model (DRM) from Marderstein et al 2021 AJHG (<https://doi.org/10.1016/j.ajhg.2020.11.016>).
+
+To estimate variance heterogeneity effects using MZs, simply
+
+$$
+|y_{i,A} - y_{i,B}| = \hat{\beta}_{2,j}G_{i,j} + \epsilon_i
+$$
+
+where A and B represent the individuals in the MZ pair.
+
+To estimate variance heterogeneity effects using siblings, it is identical to the MZ method but restricted to sibling pairs who have identity by state value of 2 (i.e. share the same genotype value at the SNP being tested).
+
+## Simulations
 
 ```{r}
 library(dplyr)
 library(ggplot2)
 ```
+
+Method for simulating dispersion effects in unrelated individuals
 
 ```{r}
 sim_pop <- function(n, beta1, beta2, af, h2)
@@ -33,6 +71,8 @@ sim_pop <- function(n, beta1, beta2, af, h2)
 a <- sim_pop(100000, 0.1, 0.5, 0.3, 0.1)
 var(a)
 ```
+
+Method for simulating dispersion effects in monozogytic twins
 
 ```{r}
 sim_mz <- function(n, beta1, beta2, af, h2)
@@ -54,11 +94,15 @@ a <- sim_mz(100000, 0.1, 0.5, 0.3, 0.1)
 var(a)
 ```
 
+See what dispersion looks like from this simulation
+
 ```{r}
 a %>%
   ggplot(., aes(x=as.factor(g), y=y1)) +
   geom_boxplot()
 ```
+
+Summarise the dispersion. Note - how would you scale it to the MZ pair mean?
 
 ```{r}
 a <- sim_mz(100000, 0.1, 0.5, 0.3, 0.8)
@@ -70,6 +114,8 @@ a %>%
     mzv=mean(abs(y1-y2))
   )
 ```
+
+Method for testing unrelateds using DRM
 
 ```{r}
 test_drm <- function(g, y)
@@ -83,6 +129,8 @@ test_drm <- function(g, y)
 }
 test_drm(a$g, a$y1)
 ```
+
+Method for testing using MZs
 
 ```{r}
 test_mz <- function(g, y1, y2)
@@ -101,9 +149,9 @@ test_mz(a$g, a$y1, a$y2)
 
 ## Power simulations
 
-A trait with high heritability will have vQTL effects that are relatively large in MZs, but heritability shouldn't have a major part to play in unrelateds for estimating vQTL effects.
+A trait with high heritability will have vQTL (dispersion) effects that are relatively large in MZs, but heritability shouldn't have a major part to play in unrelateds for estimating vQTL effects.
 
-Start with simulations where population is comapred against mz and n pop = n mz pairs.
+Start with simulations where population is compared against mz and n pop = n mz pairs.
 
 ```{r}
 param <- expand.grid(
@@ -138,7 +186,7 @@ ggplot(., aes(x=beta2, y=-log10(`Pr(>|t|)`))) +
   facet_grid(. ~ h2)
 ```
 
-They are comparable at low heritability but as heritabiltiy increases, MZ method has a distinct advantage.
+They are comparable at low heritability but as heritability increases, MZ method has a distinct advantage.
 
 Now compare with more realistic sample sizes, 10k mz pairs vs 500k unrelateds
 
@@ -176,7 +224,7 @@ ggplot(res2, aes(x=beta2, y=-log10(`Pr(>|t|)`))) +
 
 It looks like you'd just be better off with estimation in populations.
 
-Check false discovery rates
+## Type 1 error
 
 ```{r}
 param <- expand.grid(
@@ -204,11 +252,15 @@ res3 <- lapply(1:nrow(param), function(i)
   bind_rows()
 ```
 
+Plot type 1 error
+
 ```{r}
 ggplot(res3, aes(x=beta1, y=-log10(`Pr(>|t|)`))) +
   geom_line(aes(colour=method)) +
   facet_grid(. ~ h2)
 ```
+
+Type 1 error and number of false positives after multiple testing correction
 
 ```{r}
 res3 %>% 
@@ -220,13 +272,9 @@ res3 %>%
   )
 ```
 
-```{r}
-
-```
-
 Under normal distribution type-1 error rate is well controlled.
 
-## Sibs
+## Simulations using siblings
 
 Generate a set of sib pairs with the following specification
 
@@ -381,3 +429,5 @@ res4 %>% mutate(sharing=c2+h2) %>% filter(beta1==0) %>%
   geom_line(aes(colour=method, groups=af)) +
   facet_grid(. ~ sharing)
 ```
+
+Similar to MZ method - quite a substantial benefit from leveraging large sample sizes of unrelateds compared to using siblings.

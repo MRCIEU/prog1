@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Gibran Hemani">
-<meta name="dcterms.date" content="2022-12-10">
+<meta name="dcterms.date" content="2022-12-11">
 
 <title>Variance estimators</title>
 <style>
@@ -94,6 +94,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <link href="2022-12-09-mz-variance_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="2022-12-09-mz-variance_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 </head>
 
@@ -122,7 +123,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">December 10, 2022</p>
+      <p class="date">December 11, 2022</p>
     </div>
   </div>
     
@@ -131,8 +132,33 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 </header>
 
-<section id="power-of-mzs-for-variance" class="level2">
-<h2 class="anchored" data-anchor-id="power-of-mzs-for-variance">Power of MZs for variance</h2>
+<section id="data-generating-model" class="level2">
+<h2 class="anchored" data-anchor-id="data-generating-model">Data generating model</h2>
+<p><span class="math display">\[
+y_i = \alpha + \beta_{1,j}G_{ij} + z_i + v_i + e_i
+\]</span></p>
+<p>where <span class="math inline">\(\alpha\)</span> is an intercept term, <span class="math inline">\(\beta_{1,j}\)</span> is the additive effect of SNP $j$, <span class="math inline">\(G_{i,j}\)</span> is the genotype value for individual <span class="math inline">\(i\)</span> at SNP $j$, <span class="math inline">\(z_i\)</span> is the remaining polygenic risk</p>
+<p><span class="math display">\[
+z_i \sim N(0, \sigma^2_{g} - 2p_j(1-p_j)\beta_{1,j}^2)
+\]</span></p>
+<p><span class="math inline">\(v_i\)</span> is the SNP’s influence on dispersion where</p>
+<p><span class="math display">\[
+v_i \sim N(0, \beta_{2,j}G_{i,j})
+\]</span></p>
+<p>and <span class="math inline">\(e_i\)</span> is the residual variance</p>
+<p><span class="math display">\[
+e_i \sim N(0, 1 - \sigma^2_g - \sigma^2_v)
+\]</span></p>
+<p>To estimate dispersion effects amongst unrelateds use the deviation regression model (DRM) from Marderstein et al 2021 AJHG (<a href="https://doi.org/10.1016/j.ajhg.2020.11.016" class="uri">https://doi.org/10.1016/j.ajhg.2020.11.016</a>).</p>
+<p>To estimate variance heterogeneity effects using MZs, simply</p>
+<p><span class="math display">\[
+|y_{i,A} - y_{i,B}| = \hat{\beta}_{2,j}G_{i,j} + \epsilon_i
+\]</span></p>
+<p>where A and B represent the individuals in the MZ pair.</p>
+<p>To estimate variance heterogeneity effects using siblings, it is identical to the MZ method but restricted to sibling pairs who have identity by state value of 2 (i.e.&nbsp;share the same genotype value at the SNP being tested).</p>
+</section>
+<section id="simulations" class="level2">
+<h2 class="anchored" data-anchor-id="simulations">Simulations</h2>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-1_8dc4717b635fe95c5a2abd1b58877c5b">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -151,6 +177,7 @@ Attaching package: 'dplyr'</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Method for simulating dispersion effects in unrelated individuals</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-2_4bc89533dedf80f42ed598fde8cadcc3">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>sim_pop <span class="ot">&lt;-</span> <span class="cf">function</span>(n, beta1, beta2, af, h2)</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>{</span>
@@ -172,6 +199,7 @@ g 0.41881431 0.04145241
 y 0.04145241 1.00183156</code></pre>
 </div>
 </div>
+<p>Method for simulating dispersion effects in monozogytic twins</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-3_6fab5f6a48a93ccc270559286d6459f9">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>sim_mz <span class="ot">&lt;-</span> <span class="cf">function</span>(n, beta1, beta2, af, h2)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>{</span>
@@ -197,6 +225,7 @@ y1 0.04179887 1.00074619 0.01158774
 y2 0.04360385 0.01158774 0.99856453</code></pre>
 </div>
 </div>
+<p>See what dispersion looks like from this simulation</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-4_fa0c01a8be68d8be23ea4dc706951c55">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>a <span class="sc">%&gt;%</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(., <span class="fu">aes</span>(<span class="at">x=</span><span class="fu">as.factor</span>(g), <span class="at">y=</span>y1)) <span class="sc">+</span></span>
@@ -205,6 +234,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 <p><img src="2022-12-09-mz-variance_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+<p>Summarise the dispersion. Note - how would you scale it to the MZ pair mean?</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-5_d9e96c25d72b19498cd7f679b92aa12b">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">sim_mz</span>(<span class="dv">100000</span>, <span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.3</span>, <span class="fl">0.8</span>)</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>a <span class="sc">%&gt;%</span> </span>
@@ -223,6 +253,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 3     2  0.211   1.83  1.21 </code></pre>
 </div>
 </div>
+<p>Method for testing unrelateds using DRM</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-6_5319d770436701aefe132b3bf7392b09">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>test_drm <span class="ot">&lt;-</span> <span class="cf">function</span>(g, y)</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>{</span>
@@ -241,6 +272,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 1    0.152      0.00295      51.6          0 drm   </code></pre>
 </div>
 </div>
+<p>Method for testing using MZs</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-7_84aa23c405c190d96f4cec0d5e9a77bb">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>test_mz <span class="ot">&lt;-</span> <span class="cf">function</span>(g, y1, y2)</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>{</span>
@@ -263,8 +295,8 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 </section>
 <section id="power-simulations" class="level2">
 <h2 class="anchored" data-anchor-id="power-simulations">Power simulations</h2>
-<p>A trait with high heritability will have vQTL effects that are relatively large in MZs, but heritability shouldn’t have a major part to play in unrelateds for estimating vQTL effects.</p>
-<p>Start with simulations where population is comapred against mz and n pop = n mz pairs.</p>
+<p>A trait with high heritability will have vQTL (dispersion) effects that are relatively large in MZs, but heritability shouldn’t have a major part to play in unrelateds for estimating vQTL effects.</p>
+<p>Start with simulations where population is compared against mz and n pop = n mz pairs.</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-8_070d8a77764839d1009607d6ddaba37b">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>param <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">beta1 =</span> <span class="dv">0</span>,</span>
@@ -301,7 +333,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 <p><img src="2022-12-09-mz-variance_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-<p>They are comparable at low heritability but as heritabiltiy increases, MZ method has a distinct advantage.</p>
+<p>They are comparable at low heritability but as heritability increases, MZ method has a distinct advantage.</p>
 <p>Now compare with more realistic sample sizes, 10k mz pairs vs 500k unrelateds</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-10_3f9069d2f90f8adff8508d1d21da0e20">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>param <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
@@ -399,7 +431,9 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 </div>
 </div>
 <p>It looks like you’d just be better off with estimation in populations.</p>
-<p>Check false discovery rates</p>
+</section>
+<section id="type-1-error" class="level2">
+<h2 class="anchored" data-anchor-id="type-1-error">Type 1 error</h2>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-12_d7c7fd1dbae421650c46c6d43a5df48d">
 <div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>param <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
 <span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">beta1 =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fl">0.5</span>, <span class="at">by=</span><span class="fl">0.002</span>),</span>
@@ -427,6 +461,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 <span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>}) <span class="sc">%&gt;%</span></span>
 <span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_rows</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Plot type 1 error</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-13_7d7652c48d84c537daddf98850d7f28e">
 <div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(res3, <span class="fu">aes</span>(<span class="at">x=</span>beta1, <span class="at">y=</span><span class="sc">-</span><span class="fu">log10</span>(<span class="st">`</span><span class="at">Pr(&gt;|t|)</span><span class="st">`</span>))) <span class="sc">+</span></span>
 <span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">colour=</span>method)) <span class="sc">+</span></span>
@@ -435,6 +470,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 <p><img src="2022-12-09-mz-variance_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+<p>Type 1 error and number of false positives after multiple testing correction</p>
 <div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-14_3e3a2c2ea9c44fb3002354d44de88d69">
 <div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>res3 <span class="sc">%&gt;%</span> </span>
 <span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fdr=</span><span class="fu">p.adjust</span>(<span class="st">`</span><span class="at">Pr(&gt;|t|)</span><span class="st">`</span>, <span class="st">"fdr"</span>)) <span class="sc">%&gt;%</span></span>
@@ -458,13 +494,10 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 4 mzdiff   0.9 0.0757     0</code></pre>
 </div>
 </div>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-15_6a61f0d1010405e335123298e239f234">
-
-</div>
 <p>Under normal distribution type-1 error rate is well controlled.</p>
 </section>
-<section id="sibs" class="level2">
-<h2 class="anchored" data-anchor-id="sibs">Sibs</h2>
+<section id="simulations-using-siblings" class="level2">
+<h2 class="anchored" data-anchor-id="simulations-using-siblings">Simulations using siblings</h2>
 <p>Generate a set of sib pairs with the following specification</p>
 <ul>
 <li><p>Have PRS such that IBD ~ N(0.5, sqrt(0.037))</p></li>
@@ -473,7 +506,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 <li><p>one SNP has a mean and variance effect</p></li>
 <li><p>scaled phenotypes ~ N(0, 1)</p></li>
 </ul>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-16_dedc4d7447dc3fe56acffca402fe29e2">
+<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-15_ee45c33d82ea5f752ec437d7ed064b3a">
 <div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>sim_sibs <span class="ot">&lt;-</span> <span class="cf">function</span>(af, nfam, beta1, beta2, h2, c2)</span>
 <span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>{</span>
 <span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Choose number of SNPs to be expected number of recombination events</span></span>
@@ -557,7 +590,7 @@ y2 0.04360385 0.01158774 0.99856453</code></pre>
 <li><p>In this model if the allele frequency is higher, then the genotype class with the larger variance is more common, which means that effect alleles are not reflexive in terms of variances</p></li>
 <li><p>I think this use with siblings may have problems due to LD. If there is incomplete LD with another causal variant elsewhere close by then the mean effect of that causal variant will contribute to the variance effect estimated at the variant</p></li>
 </ul>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-17_f9b4c30f1a189f83d86b080a15927775">
+<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-16_fe41923259d85764dfa35bfa974015a8">
 <div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>fam <span class="ot">&lt;-</span> <span class="fu">sim_sibs</span>(<span class="fl">0.3</span>, <span class="dv">10000</span>, <span class="fl">0.1</span>, <span class="fl">0.4</span>, <span class="fl">0.6</span>, <span class="fl">0.1</span>)</span>
 <span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cor</span>(fam) <span class="sc">%&gt;%</span> <span class="fu">round</span>(<span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -572,7 +605,7 @@ y2    0.0077  0.0551 0.0665  0.3816  0.7721 0.4011 1.0000</code></pre>
 </div>
 </div>
 <p>Now how to estimate variance effect? At a locus restrict to sib pairs who are IBD = 1</p>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-18_5db4656849216374004abba68793119b">
+<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-17_b4daf1a0ef1952a61f9e56137960c837">
 <div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>fam <span class="ot">&lt;-</span> <span class="fu">sim_sibs</span>(<span class="at">af=</span><span class="fl">0.5</span>, <span class="at">nfam=</span><span class="dv">40000</span>, <span class="at">beta1=</span><span class="fl">0.1</span>, <span class="at">beta2=</span><span class="fl">0.2</span>, <span class="at">h2=</span><span class="fl">0.3</span>, <span class="at">c2=</span><span class="fl">0.1</span>)</span>
 <span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>fam</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -593,7 +626,7 @@ y2    0.0077  0.0551 0.0665  0.3816  0.7721 0.4011 1.0000</code></pre>
 </div>
 </div>
 <p>Test for variance QTL</p>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-19_52e8aff20b6e1a3c2aa4ddbed943cb45">
+<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-18_b0152ba30cb588db6a8918b2e7f1c39b">
 <div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>fam <span class="ot">&lt;-</span> <span class="fu">sim_sibs</span>(<span class="at">af=</span><span class="fl">0.5</span>, <span class="at">nfam=</span><span class="dv">40000</span>, <span class="at">beta1=</span><span class="fl">0.1</span>, <span class="at">beta2=</span><span class="fl">0.2</span>, <span class="at">h2=</span><span class="fl">0.01</span>, <span class="at">c2=</span><span class="fl">0.01</span>)</span>
 <span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>f1 <span class="ot">&lt;-</span> <span class="fu">subset</span>(fam, g1<span class="sc">==</span>g2)</span>
 <span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a><span class="fu">test_mz</span>(f1<span class="sc">$</span>g1, f1<span class="sc">$</span>y1, f1<span class="sc">$</span>y2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -605,7 +638,7 @@ y2    0.0077  0.0551 0.0665  0.3816  0.7721 0.4011 1.0000</code></pre>
 </div>
 </div>
 <p>Power sims</p>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-20_00b4a1855645c9297ce33105b8c96014">
+<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-19_1db943ea1d05e75f42dbf73ec0c33f94">
 <div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>param <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
 <span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">beta1 =</span> <span class="dv">0</span>,</span>
 <span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">beta2 =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fl">0.5</span>, <span class="at">by=</span><span class="fl">0.01</span>),</span>
@@ -633,7 +666,7 @@ y2    0.0077  0.0551 0.0665  0.3816  0.7721 0.4011 1.0000</code></pre>
 <span id="cb61-14"><a href="#cb61-14" aria-hidden="true" tabindex="-1"></a>}) <span class="sc">%&gt;%</span></span>
 <span id="cb61-15"><a href="#cb61-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_rows</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-21_d2f02555d2848739a7ff6b482a58696b">
+<div class="cell" data-hash="2022-12-09-mz-variance_cache/html/unnamed-chunk-20_664b4b686c19e40169cc98b1c09dbe27">
 <div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>res4 <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">sharing=</span>c2<span class="sc">+</span>h2) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(beta1<span class="sc">==</span><span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(., <span class="fu">aes</span>(<span class="at">x=</span>beta2, <span class="at">y=</span><span class="sc">-</span><span class="fu">log10</span>(<span class="st">`</span><span class="at">Pr(&gt;|t|)</span><span class="st">`</span>))) <span class="sc">+</span></span>
 <span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">colour=</span>method, <span class="at">groups=</span>af)) <span class="sc">+</span></span>
@@ -643,9 +676,10 @@ y2    0.0077  0.0551 0.0665  0.3816  0.7721 0.4011 1.0000</code></pre>
 aesthetics: groups</code></pre>
 </div>
 <div class="cell-output-display">
-<p><img src="2022-12-09-mz-variance_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid" width="672"></p>
+<p><img src="2022-12-09-mz-variance_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+<p>Similar to MZ method - quite a substantial benefit from leveraging large sample sizes of unrelateds compared to using siblings.</p>
 </section>
 
 </main>
